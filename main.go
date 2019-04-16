@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 
@@ -13,7 +14,13 @@ import (
 )
 
 func main() {
+
 	logger := log.NewLogfmtLogger(os.Stderr)
+
+	addr, err := determineListenAddress()
+	if err != nil {
+		logger.Log(err)
+	}
 
 	fieldKeys := []string{"method", "error"}
 	requestCount := kitprometheus.NewCounterFrom(stdprometheus.CounterOpts{
@@ -55,7 +62,15 @@ func main() {
 	http.Handle("/uppercase", uppercaseHandler)
 	http.Handle("/count", countHandler)
 	http.Handle("/metrics", promhttp.Handler())
-	logger.Log("msg", "HTTP", "addr", ":8080")
-	logger.Log("err", http.ListenAndServe(":", nil))
+	logger.Log("msg", "HTTP", "addr", addr)
+	logger.Log("err", http.ListenAndServe(addr, nil))
 
+}
+
+func determineListenAddress() (string, error) {
+	port := os.Getenv("PORT")
+	if port == "" {
+		return "", fmt.Errorf("$PORT not set")
+	}
+	return ":" + port, nil
 }
